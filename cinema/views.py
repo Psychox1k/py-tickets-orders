@@ -73,7 +73,7 @@ class MovieViewSet(viewsets.ModelViewSet):
             q_objects = Q()
             for genre in genres_list:
                 if genre.isdigit():
-                    q_objects |= Q(genres__id=genre)
+                    q_objects |= Q(genres__id=int(genre))
                 else:
                     q_objects |= Q(genres__name__icontains=genre)
 
@@ -87,7 +87,7 @@ class MovieViewSet(viewsets.ModelViewSet):
             q_objects = Q()
             for actor in actors_list:
                 if actor.isdigit():
-                    q_objects |= Q(actors__id=actor)
+                    q_objects |= Q(actors__id=int(actor))
                 else:
                     q_objects |= (
                         Q(actors__first_name__icontains=actor)
@@ -121,7 +121,9 @@ class MovieSessionViewSet(viewsets.ModelViewSet):
 
         if movie:
             if movie.isdigit():
-                queryset = queryset.filter(movie__id=movie)
+                queryset = queryset.filter(movie__id=int(movie))
+            else:
+                queryset = queryset.filter(movie__title__icontains=movie)
 
         date = self.request.query_params.get("date")
 
@@ -138,8 +140,8 @@ class MovieSessionViewSet(viewsets.ModelViewSet):
                 "cinema_hall",
                 "movie").annotate(
                 tickets_available=F(
-                    "cinema_hall__capacity"
-                ) - Count("tickets"))
+                    "cinema_hall__rows"
+                ) * F("cinema_hall__seats_in_row") - Count("tickets"))
         elif self.action == "retrieve":
             queryset = (queryset.select_related(
                 "movie",
@@ -162,16 +164,9 @@ class TicketViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 100
-    page_size_query_param = "page_size"
-    max_page_size = 3
-
-
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         queryset = self.queryset.filter(user=self.request.user)
